@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agenda · Fran</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:       #F9F1F0;
+    --surface:  #FDFAF9;
+    --rose1:    #EDD5D0;
+    --rose2:    #D9B0A8;
+    --rose3:    #C9998A;
+    --rose4:    #8B5E57;
+    --rose5:    #5C3530;
+    --text:     #2E1A17;
+    --muted:    #7A5550;
+    --hint:     #A88480;
+    --border:   #E2C8C4;
+    --green:    #4A7C59;
+    --green-bg: #EDF4EF;
+    --amber:    #8B6914;
+    --amber-bg: #FAF3E0;
+    --gray:     #888;
+    --gray-bg:  #F3F3F1;
+  }
+  body { font-family: Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+  .topbar { background: var(--surface); border-bottom: 0.5px solid var(--border); padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .topbar-title { font-family: Georgia, serif; font-size: 20px; font-weight: normal; color: var(--text); letter-spacing: 0.02em; }
+  .topbar-sub { font-size: 11px; color: var(--hint); margin-top: 3px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .topbar-right { display: flex; gap: 8px; align-items: center; }
+  .role-switch { display: flex; gap: 1px; border: 0.5px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .role-btn { padding: 6px 16px; background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; border: none; letter-spacing: 0.03em; transition: all 0.12s; }
+  .role-btn.active { background: var(--rose1); color: var(--rose5); font-weight: bold; }
+  .config-btn { padding: 6px 12px; background: none; border: 0.5px solid var(--border); border-radius: 6px; color: var(--hint); font-size: 12px; cursor: pointer; }
+  .config-btn:hover { background: var(--rose1); color: var(--rose4); border-color: var(--rose3); }
+
+  .sync-bar { padding: 6px 24px; font-size: 11px; display: flex; align-items: center; gap: 6px; border-bottom: 0.5px solid var(--border); background: var(--surface); }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+  .sync-dot.ok { background: #4A7C59; }
+  .sync-dot.loading { background: var(--amber); }
+  .sync-dot.err { background: #8B2020; }
+  .sync-label { color: var(--hint); letter-spacing: 0.03em; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 0.5px solid var(--border); }
+  .stat { padding: 14px 20px; border-right: 0.5px solid var(--border); }
+  .stat:last-child { border-right: none; }
+  .stat-n { font-family: Georgia, serif; font-size: 26px; color: var(--rose4); font-weight: normal; }
+  .stat-n.urgent { color: #8B2020; }
+  .stat-l { font-size: 10px; color: var(--hint); margin-top: 1px; letter-spacing: 0.05em; text-transform: uppercase; }
+
+  .tabs { display: flex; background: var(--surface); border-bottom: 0.5px solid var(--border); padding: 0 24px; overflow-x: auto; }
+  .tab { padding: 11px 16px; font-size: 12px; color: var(--hint); cursor: pointer; border-bottom: 1.5px solid transparent; margin-bottom: -0.5px; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+  .tab.active { color: var(--rose4); border-bottom-color: var(--rose3); }
+
+  .panel { display: none; padding: 24px; max-width: 720px; }
+  .panel.active { display: block; }
+
+  .sec-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 0.5px solid var(--border); }
+  .sec-title { font-family: Georgia, serif; font-size: 16px; font-weight: normal; color: var(--text); }
+  .add-btn { font-size: 12px; color: var(--rose4); background: none; border: 0.5px solid var(--rose3); border-radius: 4px; padding: 5px 12px; cursor: pointer; letter-spacing: 0.03em; }
+  .add-btn:hover { background: var(--rose1); }
+
+  .form-box { background: var(--surface); border: 0.5px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .form-row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .form-row input, .form-row select { padding: 8px 10px; border: 0.5px solid var(--border); border-radius: 5px; font-size: 13px; font-family: Arial; background: var(--bg); color: var(--text); outline: none; }
+  .form-row input:focus, .form-row select:focus { border-color: var(--rose3); }
+  .form-row input[type=text] { flex: 1; min-width: 160px; }
+  .form-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+  .btn-cancel { padding: 6px 14px; border: 0.5px solid var(--border); border-radius: 4px; background: none; color: var(--hint); font-size: 12px; cursor: pointer; }
+  .btn-save { padding: 6px 16px; border: 0.5px solid var(--rose3); border-radius: 4px; background: var(--rose1); color: var(--rose5); font-size: 12px; cursor: pointer; font-weight: bold; }
+  .btn-save:hover { background: var(--rose2); }
+
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 8px; padding: 13px 15px; margin-bottom: 6px; display: flex; gap: 12px; align-items: flex-start; transition: border-color 0.1s; }
+  .card:hover { border-color: var(--rose2); }
+  .card.done { opacity: 0.45; }
+  .check { width: 16px; height: 16px; border: 0.5px solid var(--rose3); border-radius: 3px; cursor: pointer; flex-shrink: 0; margin-top: 2px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: white; transition: all 0.12s; }
+  .check.checked { background: var(--rose4); border-color: var(--rose4); }
+  .card-body { flex: 1; min-width: 0; }
+  .card-title { font-size: 13px; color: var(--text); line-height: 1.45; }
+  .card.done .card-title { text-decoration: line-through; color: var(--hint); }
+  .card-meta { display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
+  .badge { font-size: 10px; padding: 2px 7px; border-radius: 3px; letter-spacing: 0.03em; }
+  .badge-simona { background: var(--rose1); color: var(--rose5); }
+  .badge-fran   { background: var(--amber-bg); color: var(--amber); }
+  .due { font-size: 10px; color: var(--hint); }
+  .due.urgent { color: #8B2020; }
+  .card-note { font-size: 11px; color: var(--muted); margin-top: 4px; font-style: italic; }
+  .del-btn { color: var(--border); font-size: 16px; cursor: pointer; padding: 0 3px; flex-shrink: 0; border-radius: 3px; line-height: 1; }
+  .del-btn:hover { color: #8B2020; background: #FDF0F0; }
+
+  .estado-repasado  { background: var(--green-bg); color: var(--green); }
+  .estado-progreso  { background: var(--amber-bg); color: var(--amber); }
+  .estado-pendiente { background: var(--rose1); color: var(--rose4); }
+
+  .prog-block { margin-bottom: 16px; }
+  .prog-top { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+  .prog-bar { height: 3px; background: var(--rose1); border-radius: 99px; overflow: hidden; }
+  .prog-fill { height: 100%; border-radius: 99px; transition: width 0.5s; }
+
+  .subj-group { margin-bottom: 18px; }
+  .subj-label { font-size: 10px; color: var(--hint); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 7px; padding-bottom: 6px; border-bottom: 0.5px solid var(--border); }
+
+  .empty { padding: 24px; text-align: center; color: var(--hint); font-size: 12px; border: 0.5px dashed var(--border); border-radius: 8px; }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(46,26,23,0.25); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; width: 90%; max-width: 480px; padding: 24px; }
+  .modal-title { font-family: Georgia, serif; font-size: 17px; font-weight: normal; color: var(--text); margin-bottom: 4px; }
+  .modal-sub { font-size: 11px; color: var(--hint); margin-bottom: 18px; }
+  .subj-list { margin-bottom: 16px; }
+  .subj-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 0.5px solid var(--border); }
+  .subj-row:last-child { border-bottom: none; }
+  .subj-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .subj-name { flex: 1; font-size: 13px; color: var(--text); }
+  .subj-del { color: var(--border); font-size: 15px; cursor: pointer; padding: 0 4px; border-radius: 3px; }
+  .subj-del:hover { color: #8B2020; background: #FDF0F0; }
+  .add-subj-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .add-subj-row input { flex: 1; min-width: 120px; padding: 8px 10px; border: 0.5px solid var(--border); border-radius: 5px; font-size: 13px; font-family: Arial; background: var(--bg); color: var(--text); outline: none; }
+  .add-subj-row input:focus { border-color: var(--rose3); }
+  .color-pick { width: 34px; height: 34px; border: 0.5px solid var(--border); border-radius: 5px; cursor: pointer; padding: 2px; background: var(--bg); }
+  .modal-close { width: 100%; padding: 9px; border: 0.5px solid var(--border); border-radius: 6px; background: none; color: var(--muted); font-size: 13px; cursor: pointer; margin-top: 10px; }
+  .modal-close:hover { background: var(--rose1); }
+
+  @media (max-width: 520px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .panel { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="topbar-title">Agenda · Fran</div>
+    <div class="topbar-sub">con Simona</div>
+  </div>
+  <div class="topbar-right">
+    <button class="config-btn" onclick="openModal()">materias</button>
+    <div class="role-switch">
+      <button class="role-btn active" onclick="setRole('simona')">Simona</button>
+      <button class="role-btn" onclick="setRole('fran')">Fran</button>
+    </div>
+  </div>
+</div>
+
+<div class="sync-bar">
+  <div class="sync-dot loading" id="sync-dot"></div>
+  <span class="sync-label" id="sync-label">conectando...</span>
+</div>
+
+<div class="stats" id="stats"></div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('tareas',this)">Tareas</div>
+  <div class="tab" onclick="switchTab('temas',this)">Temas</div>
+  <div class="tab" onclick="switchTab('progreso',this)">Progreso</div>
+  <div class="tab" onclick="switchTab('notas',this)">Notas</div>
+</div>
+
+<div class="panel active" id="panel-tareas">
+  <div class="sec-header">
+    <div class="sec-title">Tareas</div>
+    <button class="add-btn" id="btn-add-tarea" onclick="toggleForm('f-tarea')">+ agregar</button>
+  </div>
+  <div id="f-tarea" style="display:none">
+    <div class="form-box">
+      <div class="form-row">
+        <input type="text" id="t-title" placeholder="Descripción de la tarea...">
+        <select id="t-subj"></select>
+      </div>
+      <div class="form-row">
+        <input type="date" id="t-due">
+        <input type="text" id="t-note" placeholder="Nota (opcional)">
+      </div>
+      <div class="form-actions">
+        <button class="btn-cancel" onclick="toggleForm('f-tarea')">cancelar</button>
+        <button class="btn-save" onclick="addTarea()">guardar</button>
+      </div>
+    </div>
+  </div>
+  <div id="list-tareas"></div>
+</div>
+
+<div class="panel" id="panel-temas">
+  <div class="sec-header">
+    <div class="sec-title">Temas que entran</div>
+    <button class="add-btn" onclick="toggleForm('f-tema')">+ agregar</button>
+  </div>
+  <div id="f-tema" style="display:none">
+    <div class="form-box">
+      <div class="form-row">
+        <input type="text" id="tm-title" placeholder="Ej: Surface area of cylinders...">
+        <select id="tm-subj"></select>
+      </div>
+      <div class="form-row">
+        <select id="tm-estado"><option value="pendiente">Pendiente</option><option value="progreso">En progreso</option><option value="repasado">Repasado</option></select>
+        <input type="text" id="tm-note" placeholder="Nota (opcional)">
+      </div>
+      <div class="form-actions">
+        <button class="btn-cancel" onclick="toggleForm('f-tema')">cancelar</button>
+        <button class="btn-save" onclick="addTema()">guardar</button>
+      </div>
+    </div>
+  </div>
+  <div id="list-temas"></div>
+</div>
+
+<div class="panel" id="panel-progreso">
+  <div class="sec-header"><div class="sec-title">Progreso por materia</div></div>
+  <div id="prog-wrap"></div>
+</div>
+
+<div class="panel" id="panel-notas">
+  <div class="sec-header">
+    <div class="sec-title">Notas</div>
+    <button class="add-btn" onclick="toggleForm('f-nota')">+ agregar</button>
+  </div>
+  <div id="f-nota" style="display:none">
+    <div class="form-box">
+      <div class="form-row">
+        <input type="text" id="n-title" placeholder="Nota o recordatorio...">
+        <select id="n-subj"></select>
+      </div>
+      <div class="form-actions">
+        <button class="btn-cancel" onclick="toggleForm('f-nota')">cancelar</button>
+        <button class="btn-save" onclick="addNota()">guardar</button>
+      </div>
+    </div>
+  </div>
+  <div id="list-notas"></div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title">Materias</div>
+    <div class="modal-sub">Agregá o eliminá materias. El color aparece en el progreso.</div>
+    <div class="subj-list" id="subj-list"></div>
+    <div class="add-subj-row">
+      <input type="text" id="new-subj-name" placeholder="Nombre de la materia..." onkeydown="if(event.key==='Enter')addSubject()">
+      <input type="color" class="color-pick" id="new-subj-color" value="#C9998A">
+      <button class="btn-save" onclick="addSubject()">+ agregar</button>
+    </div>
+    <button class="modal-close" onclick="closeModal()">listo</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, push, update, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDWVroZwKOBkSJgzsj09aRT6Yhlyr-Gyik",
+  authDomain: "agenda-fran-ab9fd.firebaseapp.com",
+  databaseURL: "https://agenda-fran-ab9fd-default-rtdb.firebaseio.com",
+  projectId: "agenda-fran-ab9fd",
+  storageBucket: "agenda-fran-ab9fd.firebasestorage.app",
+  messagingSenderId: "847778281246",
+  appId: "1:847778281246:web:bf0fe948b8e8a87640fb0f"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const DEFAULT_SUBJECTS = [
+  { id: 'math',    label: 'Mathematics', color: '#7B9ED9' },
+  { id: 'civics',  label: 'Civics',      color: '#9B7BC8' },
+  { id: 'history', label: 'History',     color: '#C49A4A' },
+  { id: 'lit',     label: 'Literature',  color: '#C9998A' },
+];
+
+let role = 'simona';
+let state = { tareas: {}, temas: {}, notas: {}, subjects: [] };
+
+function setSyncStatus(status, label) {
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  dot.className = 'sync-dot ' + status;
+  lbl.textContent = label;
+}
+
+function getSubject(id) {
+  const s = state.subjects.find(s => s.id === id);
+  return s || { label: id, color: '#C9998A' };
+}
+
+function subjectBadgeStyle(id) {
+  const s = getSubject(id);
+  const hex = s.color;
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `background:rgba(${r},${g},${b},0.15);color:${darken(hex)};`;
+}
+
+function darken(hex) {
+  let r = parseInt(hex.slice(1,3),16);
+  let g = parseInt(hex.slice(3,5),16);
+  let b = parseInt(hex.slice(5,7),16);
+  r = Math.round(r*0.55); g = Math.round(g*0.55); b = Math.round(b*0.55);
+  return '#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+
+function daysUntil(d) {
+  if (!d) return null;
+  return Math.round((new Date(d+'T00:00:00') - new Date(new Date().toDateString())) / 86400000);
+}
+
+function duLabel(d) {
+  const n = daysUntil(d);
+  if (n === null) return '';
+  if (n < 0) return 'venció hace '+Math.abs(n)+'d';
+  if (n === 0) return 'hoy';
+  if (n === 1) return 'mañana';
+  return 'en '+n+' días';
+}
+
+function bybadge(by) {
+  return by === 'simona'
+    ? '<span class="badge badge-simona">Simona</span>'
+    : '<span class="badge badge-fran">Fran</span>';
+}
+
+function canDel(item) { return role === 'simona' || item.by === 'fran'; }
+
+function populateSelects() {
+  ['t-subj','tm-subj','n-subj'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const val = el.value;
+    el.innerHTML = state.subjects.map(s => `<option value="${s.id}">${s.label}</option>`).join('');
+    if (val && state.subjects.find(s => s.id === val)) el.value = val;
+  });
+}
+
+window.setRole = function(r) {
+  role = r;
+  document.querySelectorAll('.role-btn').forEach((b,i) => b.classList.toggle('active', ['simona','fran'][i] === r));
+  document.getElementById('btn-add-tarea').style.display = r === 'simona' ? 'inline-block' : 'none';
+  render();
+};
+
+window.switchTab = function(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+};
+
+window.toggleForm = function(id) {
+  const el = document.getElementById(id);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+};
+
+window.openModal = function() { renderSubjectList(); document.getElementById('modal-overlay').classList.add('open'); };
+window.closeModal = function() { document.getElementById('modal-overlay').classList.remove('open'); };
+window.closeModalOutside = function(e) { if (e.target === document.getElementById('modal-overlay')) window.closeModal(); };
+
+window.addSubject = function() {
+  const name = document.getElementById('new-subj-name').value.trim();
+  if (!name) return;
+  const color = document.getElementById('new-subj-color').value;
+  const id = 'subj_' + Date.now();
+  const newSubjects = [...state.subjects, { id, label: name, color }];
+  set(ref(db, 'subjects'), newSubjects);
+  document.getElementById('new-subj-name').value = '';
+};
+
+window.deleteSubject = function(id) {
+  const inUse = [...Object.values(state.tareas||{}), ...Object.values(state.temas||{}), ...Object.values(state.notas||{})].some(x => x.subj === id);
+  if (inUse && !confirm('Esta materia tiene items asignados. ¿Eliminarla igual?')) return;
+  const newSubjects = state.subjects.filter(s => s.id !== id);
+  set(ref(db, 'subjects'), newSubjects);
+};
+
+window.addTarea = function() {
+  const title = document.getElementById('t-title').value.trim();
+  if (!title) return;
+  const newRef = push(ref(db, 'tareas'));
+  set(newRef, { title, subj: document.getElementById('t-subj').value, due: document.getElementById('t-due').value, note: document.getElementById('t-note').value.trim(), done: false, by: role, ts: Date.now() });
+  document.getElementById('t-title').value = '';
+  document.getElementById('t-due').value = '';
+  document.getElementById('t-note').value = '';
+  window.toggleForm('f-tarea');
+};
+
+window.addTema = function() {
+  const title = document.getElementById('tm-title').value.trim();
+  if (!title) return;
+  const newRef = push(ref(db, 'temas'));
+  set(newRef, { title, subj: document.getElementById('tm-subj').value, estado: document.getElementById('tm-estado').value, note: document.getElementById('tm-note').value.trim(), by: role, ts: Date.now() });
+  document.getElementById('tm-title').value = '';
+  document.getElementById('tm-note').value = '';
+  window.toggleForm('f-tema');
+};
+
+window.addNota = function() {
+  const title = document.getElementById('n-title').value.trim();
+  if (!title) return;
+  const newRef = push(ref(db, 'notas'));
+  set(newRef, { title, subj: document.getElementById('n-subj').value, by: role, ts: Date.now() });
+  document.getElementById('n-title').value = '';
+  window.toggleForm('f-nota');
+};
+
+window.toggleDone = function(key) {
+  const t = state.tareas[key];
+  if (t) update(ref(db, 'tareas/'+key), { done: !t.done });
+};
+
+window.cycleEstado = function(key) {
+  const t = state.temas[key];
+  if (!t) return;
+  const o = ['pendiente','progreso','repasado'];
+  update(ref(db, 'temas/'+key), { estado: o[(o.indexOf(t.estado)+1)%3] });
+};
+
+window.delItem = function(type, key) {
+  remove(ref(db, type+'/'+key));
+};
+
+function render() {
+  populateSelects();
+  renderStats(); renderTareas(); renderTemas(); renderProgreso(); renderNotas();
+}
+
+function renderSubjectList() {
+  document.getElementById('subj-list').innerHTML = state.subjects.map(s => `
+    <div class="subj-row">
+      <div class="subj-dot" style="background:${s.color}"></div>
+      <span class="subj-name">${s.label}</span>
+      <span class="subj-del" onclick="deleteSubject('${s.id}')">×</span>
+    </div>`).join('');
+}
+
+function renderStats() {
+  const tareas = Object.values(state.tareas||{});
+  const done = tareas.filter(t=>t.done).length;
+  const pend = tareas.length - done;
+  const urg  = tareas.filter(t=>!t.done && t.due && daysUntil(t.due)<=2).length;
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="stat-n">${pend}</div><div class="stat-l">pendientes</div></div>
+    <div class="stat"><div class="stat-n">${done}</div><div class="stat-l">completadas</div></div>
+    <div class="stat"><div class="stat-n ${urg>0?'urgent':''}">${urg}</div><div class="stat-l">urgentes</div></div>
+    <div class="stat"><div class="stat-n">${Object.keys(state.temas||{}).length}</div><div class="stat-l">temas</div></div>`;
+}
+
+function renderTareas() {
+  const el = document.getElementById('list-tareas');
+  const items = Object.entries(state.tareas||{}).map(([k,v])=>({...v,_key:k}));
+  items.sort((a,b)=>{
+    if (a.done!==b.done) return a.done?1:-1;
+    if (a.due&&b.due) return new Date(a.due)-new Date(b.due);
+    if (a.due) return -1; if (b.due) return 1;
+    return (b.ts||0)-(a.ts||0);
+  });
+  if (!items.length) { el.innerHTML='<div class="empty">sin tareas todavía</div>'; return; }
+  el.innerHTML = items.map(t=>{
+    const d = daysUntil(t.due);
+    const urgCls = (d!==null&&d<=2&&!t.done)?'urgent':'';
+    const s = getSubject(t.subj);
+    const del = canDel(t)?`<span class="del-btn" onclick="delItem('tareas','${t._key}')">×</span>`:'';
+    return `<div class="card ${t.done?'done':''}">
+      <div class="check ${t.done?'checked':''}" onclick="toggleDone('${t._key}')">${t.done?'✓':''}</div>
+      <div class="card-body">
+        <div class="card-title">${t.title}</div>
+        <div class="card-meta">
+          <span class="badge" style="${subjectBadgeStyle(t.subj)}">${s.label}</span>
+          ${bybadge(t.by)}
+          ${t.due?`<span class="due ${urgCls}">${duLabel(t.due)}</span>`:''}
+        </div>
+        ${t.note?`<div class="card-note">${t.note}</div>`:''}
+      </div>${del}</div>`;
+  }).join('');
+}
+
+function renderTemas() {
+  const el = document.getElementById('list-temas');
+  const items = Object.entries(state.temas||{}).map(([k,v])=>({...v,_key:k}));
+  if (!items.length) { el.innerHTML='<div class="empty">agregá los temas que van entrando en clase</div>'; return; }
+  const bySubj = {};
+  items.forEach(t=>{ if(!bySubj[t.subj]) bySubj[t.subj]=[]; bySubj[t.subj].push(t); });
+  el.innerHTML = Object.entries(bySubj).map(([s,its])=>{
+    const subj = getSubject(s);
+    return `<div class="subj-group">
+      <div class="subj-label">${subj.label}</div>
+      ${its.map(t=>{
+        const eLbl={repasado:'repasado',progreso:'en progreso',pendiente:'pendiente'}[t.estado];
+        const del=canDel(t)?`<span class="del-btn" onclick="delItem('temas','${t._key}')">×</span>`:'';
+        return `<div class="card">
+          <div class="card-body">
+            <div class="card-title">${t.title}</div>
+            <div class="card-meta">
+              <span class="badge estado-${t.estado}" onclick="cycleEstado('${t._key}')" style="cursor:pointer;user-select:none">${eLbl}</span>
+              ${bybadge(t.by)}
+            </div>
+            ${t.note?`<div class="card-note">${t.note}</div>`:''}
+          </div>${del}</div>`;
+      }).join('')}</div>`;
+  }).join('');
+}
+
+function renderProgreso() {
+  const el = document.getElementById('prog-wrap');
+  const rows = state.subjects.map(s=>{
+    const tareas = Object.values(state.tareas||{}).filter(t=>t.subj===s.id);
+    const temas  = Object.values(state.temas||{}).filter(t=>t.subj===s.id);
+    const total  = tareas.length+temas.length;
+    if (!total) return null;
+    const done = tareas.filter(t=>t.done).length + temas.filter(t=>t.estado==='repasado').length;
+    const pct  = Math.round((done/total)*100);
+    return `<div class="prog-block">
+      <div class="prog-top"><span>${s.label}</span><span>${done}/${total} · ${pct}%</span></div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${s.color}"></div></div>
+    </div>`;
+  }).filter(Boolean);
+  el.innerHTML = rows.length?rows.join(''):'<div class="empty">el progreso aparece cuando haya temas y tareas cargados</div>';
+}
+
+function renderNotas() {
+  const el = document.getElementById('list-notas');
+  const items = Object.entries(state.notas||{}).map(([k,v])=>({...v,_key:k})).reverse();
+  if (!items.length) { el.innerHTML='<div class="empty">sin notas todavía</div>'; return; }
+  el.innerHTML = items.map(n=>{
+    const s = getSubject(n.subj);
+    const del=canDel(n)?`<span class="del-btn" onclick="delItem('notas','${n._key}')">×</span>`:'';
+    return `<div class="card">
+      <div class="card-body">
+        <div class="card-title">${n.title}</div>
+        <div class="card-meta"><span class="badge" style="${subjectBadgeStyle(n.subj)}">${s.label}</span>${bybadge(n.by)}</div>
+      </div>${del}</div>`;
+  }).join('');
+}
+
+function seedIfEmpty(data) {
+  if (!data.tareas && !data.temas) {
+    set(ref(db,'tareas/t1'),{title:'Resolver examen de surface area y geometry — con los apuntes',subj:'math',due:'2026-06-20',note:'Hacerlo tranquila, mirando los resúmenes que hicimos juntas',done:false,by:'simona',ts:Date.now()});
+    set(ref(db,'tareas/t2'),{title:'Repasar temas de Civics del recuperatorio',subj:'civics',due:'2026-06-18',note:'',done:false,by:'simona',ts:Date.now()});
+    set(ref(db,'temas/tm1'),{title:'Surface area — cubo y prisma rectangular',subj:'math',estado:'repasado',note:'Bien entendido',by:'simona',ts:Date.now()});
+    set(ref(db,'temas/tm2'),{title:'Surface area — cilindro',subj:'math',estado:'progreso',note:'Confunde área lateral con total',by:'simona',ts:Date.now()});
+    set(ref(db,'temas/tm3'),{title:'Surface area — cono y esfera',subj:'math',estado:'pendiente',note:'',by:'simona',ts:Date.now()});
+    set(ref(db,'temas/tm4'),{title:'Instituciones del Estado',subj:'civics',estado:'repasado',note:'',by:'simona',ts:Date.now()});
+    set(ref(db,'notas/n1'),{title:'Siempre convertir diámetro → radio antes de usar la fórmula',subj:'math',by:'simona',ts:Date.now()});
+    set(ref(db,'notas/n2'),{title:'Una cosa a la vez. De a un tema.',subj:'general',by:'simona',ts:Date.now()});
+  }
+  if (!data.subjects) {
+    set(ref(db,'subjects'), DEFAULT_SUBJECTS);
+  }
+}
+
+onValue(ref(db, '/'), (snapshot) => {
+  const data = snapshot.val() || {};
+  seedIfEmpty(data);
+  state.tareas   = data.tareas   || {};
+  state.temas    = data.temas    || {};
+  state.notas    = data.notas    || {};
+  state.subjects = Array.isArray(data.subjects) && data.subjects.length ? data.subjects : DEFAULT_SUBJECTS;
+  setSyncStatus('ok', 'sincronizado');
+  render();
+}, (error) => {
+  setSyncStatus('err', 'error de conexión');
+});
+
+setSyncStatus('loading', 'conectando...');
+</script>
+</body>
+</html>
